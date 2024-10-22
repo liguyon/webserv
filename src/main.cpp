@@ -2,7 +2,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
-
+#include <fstream>
 #include "utils/Log.h"
 
 static void usage(const std::string& msg = "", int exitStatus = 0) {
@@ -12,7 +12,7 @@ static void usage(const std::string& msg = "", int exitStatus = 0) {
   std::cout << "usage: webserv [OPTIONS] CONFIGURATION_FILE\n\n"
       << "Options:\n"
       << "  -h, --help             Print this help text and exit.\n\n"
-      << "  --log-file             Write logs into a log file.\n"
+      << "  --log-file <folder>    Write logs into log files located in the specified folder.\n"
       << "                         If this option is not provided, logs will be written to the standard output.\n\n"
       << "  --log-level <level>    Set the logging level for the application.\n"
       << "                         Valid levels are: debug, info, warn, error.\n"
@@ -36,6 +36,16 @@ static bool parseLogLevel(const std::string& arg) {
   return true;
 }
 
+static bool parseLogFolder(const std::string& arg) {
+  if (arg.find("//") != std::string::npos)
+    return false;
+  const std::string normalized = arg[arg.length() - 1] == '/' ? arg.substr(0, arg.length() - 1) : arg;
+  if (normalized.empty())
+    return false;
+  logger.setLogFolder(normalized);
+  return true;
+}
+
 int main(int argc, char* argv[]) {
   --argc;
   ++argv;
@@ -54,15 +64,24 @@ int main(int argc, char* argv[]) {
     } else if (*it == "--help" || *it == "-h") {
       usage();
     } else if (*it == "--log-file") {
-      logger.setWriteToFile();
+      ++it;
+      if (it == args.end())
+        usage("Error: no log folder specified.", 1);
+      logger.setWriteToFile(true);
+      if (!parseLogFolder(*it))
+        usage("Error: invalid log folder.");
     } else if (*it == "--log-level") {
       ++it;
       if (it == args.end())
         usage("Error: no log level specified.", 1);
       if (!parseLogLevel(*it))
         usage("Error: invalid log level.", 1);
+    } else {
+      usage("Error: invalid option: " + *it);
     }
   }
+  if (filename.empty())
+    usage("Error: no configuration file provided.");
 
   return 0;
 }
