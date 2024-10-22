@@ -1,8 +1,9 @@
 #include <cstdlib>
+
 #include <iostream>
 #include <string>
 #include <vector>
-#include <fstream>
+
 #include "utils/Log.h"
 
 static void usage(const std::string& msg = "", int exitStatus = 0) {

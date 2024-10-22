@@ -73,7 +73,7 @@ void Log::writeLog(const std::string& time, const std::string& level, const std:
   const std::string fullPath = logFolder_ + '/' + "webserv_" + getDate() + ".log";
 #endif
 
-  std::ofstream outf(fullPath.c_str());
+  std::ofstream outf(fullPath.c_str(), std::ios::app);
   if (outf.is_open()) {
     outf << '[' << time << "] [" << level << "] " << msg << std::endl;
     outf.close();
