@@ -1,0 +1,12 @@
+# folders
+.vscode/
+.idea/
+build/
+cmake-build-*/
+
+# files
+*.a
+*.o
+*.out
+*.log
+webserv
