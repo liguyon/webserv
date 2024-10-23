@@ -1,10 +1,12 @@
 #include <cstdlib>
 
+#include <exception>
 #include <iostream>
 #include <string>
 #include <vector>
 
 #include "utils/Log.h"
+#include "server/Server.h"
 
 static void usage(const std::string& msg = "", int exitStatus = 0) {
   if (!msg.empty())
@@ -84,5 +86,9 @@ int main(int argc, char* argv[]) {
   if (filename.empty())
     usage("Error: no configuration file provided.");
 
+  try {
+    Server server(8080);
+  } catch (std::exception& e) {
+  }
   return 0;
 }

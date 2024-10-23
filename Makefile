@@ -2,7 +2,7 @@
 ###########################
 CXX				:= c++
 CXXFLAGS		:= -std=c++98 -I$(SRC_DIR)
-DEBUG_FLAGS		:= -g -O0 -DWEBSERV_DEBUG \
+DEBUG_FLAGS		:= -g3 -O0 -DWEBSERV_DEBUG \
 				   -Wall -Wextra -Wpedantic -Wnon-virtual-dtor -Wconversion -Wsign-conversion -Werror
 RELEASE_FLAGS	:= -O3 -DNDEBUG
 
@@ -13,7 +13,7 @@ BUILD_DIR		:= build
 DEBUG_DIR		:= $(BUILD_DIR)/debug
 RELEASE_DIR		:= $(BUILD_DIR)/release
 
-SOURCES			:= $(SRC_DIR)/main.cpp $(SRC_DIR)/utils/Log.cpp
+SOURCES			:= $(SRC_DIR)/main.cpp $(SRC_DIR)/utils/Log.cpp $(SRC_DIR)/server/Server.cpp
 DEBUG_OBJS		:= $(patsubst $(SRC_DIR)/%.cpp, $(DEBUG_DIR)/%.o, $(SOURCES))
 RELEASE_OBJS	:= $(patsubst $(SRC_DIR)/%.cpp, $(RELEASE_DIR)/%.o, $(SOURCES))
 
