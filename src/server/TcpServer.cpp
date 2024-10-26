@@ -1,4 +1,4 @@
-#include "Server.h"
+#include "TcpServer.h"
 
 #include <cerrno>
 #include <cstring>
@@ -18,7 +18,7 @@ std::string usToString(unsigned short s) {
   return ss.str();
 }
 
-Server::Server(unsigned short port)
+TcpServer::TcpServer(unsigned short port)
   : port_(port), portStr_(usToString(port)) {
   // populate addrinfo
   int status;
@@ -28,7 +28,7 @@ Server::Server(unsigned short port)
   hints.ai_flags = AI_PASSIVE;
   if ((status = getaddrinfo(NULL, portStr_.c_str(), &hints, &servInfo_)) != 0) {
     logger.error(
-      "Server initialization failed. Failed to resolve host address using getaddrinfo: "
+      "TcpServer initialization failed. Failed to resolve host address using getaddrinfo: "
       + std::string(gai_strerror(status)) + '.');
     throw std::exception();
   }
@@ -42,13 +42,13 @@ Server::Server(unsigned short port)
 
   // socket
   if ((listener_ = socket(servInfo_->ai_family, servInfo_->ai_socktype, servInfo_->ai_protocol)) == -1) {
-    logger.error("Server initialization failed. Failed to create socket: " + std::string(strerror(errno)) + '.');
+    logger.error("TcpServer initialization failed. Failed to create socket: " + std::string(strerror(errno)) + '.');
     freeaddrinfo(servInfo_);
     throw std::exception();
   }
   if (bind(listener_, servInfo_->ai_addr, servInfo_->ai_addrlen) == -1) {
     logger.error(
-      "Server initialization failed. Failed to bind socket to "
+      "TcpServer initialization failed. Failed to bind socket to "
       + addrStr_ + ':' + portStr_ + ": " + std::string(strerror(errno)) + '.');
     close(listener_);
     freeaddrinfo(servInfo_);
@@ -56,18 +56,18 @@ Server::Server(unsigned short port)
   }
   if (listen(listener_, 10) == -1) {
     logger.error(
-      "Server initialization failed. Failed to listen on socket at "
+      "TcpServer initialization failed. Failed to listen on socket at "
       + addrStr_ + ':' + portStr_ + ": " + std::string(strerror(errno)) + '.');
     close(listener_);
     freeaddrinfo(servInfo_);
     throw std::exception();
   }
 
-  logger.info("Server listening at " + addrStr_ + ':' + portStr_ + '.');
+  logger.info("TcpServer listening at " + addrStr_ + ':' + portStr_ + '.');
 }
 
-Server::~Server() {
+TcpServer::~TcpServer() {
   close(listener_);
   freeaddrinfo(servInfo_);
-  logger.info("Server shut down at " + addrStr_ + ':' + portStr_ + '.');
+  logger.info("TcpServer shut down at " + addrStr_ + ':' + portStr_ + '.');
 }

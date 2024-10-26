@@ -3,10 +3,10 @@
 #include <netdb.h>
 #include <string>
 
-class Server {
+class TcpServer {
   public:
-    explicit Server(unsigned short port);
-    ~Server();
+    explicit TcpServer(unsigned short port);
+    ~TcpServer();
 
 
   private:
@@ -16,7 +16,7 @@ class Server {
     addrinfo* servInfo_;
     int listener_;
 
-    Server();
-    Server(const Server& other);
-    Server& operator=(const Server& other);
+    TcpServer();
+    TcpServer(const TcpServer& other);
+    TcpServer& operator=(const TcpServer& other);
 };
