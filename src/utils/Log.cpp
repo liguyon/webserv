@@ -93,7 +93,7 @@ std::string Log::getDate() {
 std::string Log::getTime() {
   std::time_t currentTime = std::time(NULL);
   std::tm* localTime = std::localtime(&currentTime);
-  char buffer[80];
+  char buffer[32];
   std::strftime(buffer, sizeof buffer, "%Y-%m-%d %H:%M:%S", localTime);
   return buffer;
 }

@@ -34,8 +34,8 @@ TcpServer::TcpServer(unsigned short port)
   }
 
   // get address as string
-  sockaddr_in* ipv4 = reinterpret_cast<sockaddr_in*>(servInfo_->ai_addr);
-  void* addr = &(ipv4->sin_addr);
+  const sockaddr_in* ipv4 = reinterpret_cast<sockaddr_in*>(servInfo_->ai_addr);
+  const void* addr = &(ipv4->sin_addr);
   char ipStr[INET_ADDRSTRLEN];
   inet_ntop(servInfo_->ai_family, addr, ipStr, sizeof ipStr);
   addrStr_ = ipStr;
