@@ -2,6 +2,7 @@
 
 #include <cerrno>
 #include <cstring>
+#include <fcntl.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -41,11 +42,13 @@ TcpServer::TcpServer(unsigned short port)
   addrStr_ = ipStr;
 
   // socket
+  // TODO: loop through servInfo to try to create a socket
   if ((listener_ = socket(servInfo_->ai_family, servInfo_->ai_socktype, servInfo_->ai_protocol)) == -1) {
     logger.error("TcpServer initialization failed. Failed to create socket: " + std::string(strerror(errno)) + '.');
     freeaddrinfo(servInfo_);
     throw std::exception();
   }
+  fcntl(listener_, F_SETFL, O_NONBLOCK);
   if (bind(listener_, servInfo_->ai_addr, servInfo_->ai_addrlen) == -1) {
     logger.error(
       "TcpServer initialization failed. Failed to bind socket to "

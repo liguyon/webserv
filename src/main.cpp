@@ -5,8 +5,8 @@
 #include <string>
 #include <vector>
 
-#include "utils/Log.h"
 #include "server/TcpServer.h"
+#include "utils/Log.h"
 
 static void usage(const std::string& msg = "", int exitStatus = 0) {
   if (!msg.empty())
@@ -86,9 +86,11 @@ int main(int argc, char* argv[]) {
   if (filename.empty())
     usage("Error: no configuration file provided.");
 
+  TcpServer* server = NULL;
   try {
-    TcpServer server(8080);
+    server = new TcpServer(8080);
   } catch (std::exception& e) {
   }
+  delete server;
   return 0;
 }
