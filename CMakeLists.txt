@@ -10,7 +10,11 @@ add_executable(webserv
 #		src/server/ConnectionHandler.cpp
 #		src/server/ConnectionHandler.h
 		src/server/TcpServer.cpp
-		src/server/TcpServer.h)
+		src/server/TcpServer.h
+		src/config/Config.cpp
+		src/config/Config.h
+		src/utils/Utils.cpp
+		src/utils/Utils.h)
 
 target_compile_options(webserv PRIVATE
 		-Wall -Wextra -Wpedantic -Wnon-virtual-dtor -Wconversion -Wsign-conversion -Werror)
