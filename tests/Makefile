@@ -13,15 +13,19 @@ SRC_DIR			:= ../src
 ###########################
 .PHONY: all test_logger
 
-all: test_logger
+all: test_logger test_utils
 
 test_logger:
 	$(CXX) $(CXXFLAGS) $(DEBUG_FLAGS) test_logger.cpp $(SRC_DIR)/utils/Log.cpp -I$(SRC_DIR)/utils -o test_logger
+
+test_utils:
+	$(CXX) $(CXXFLAGS) $(DEBUG_FLAGS) test_utils.cpp $(SRC_DIR)/utils/Utils.cpp -I$(SRC_DIR)/utils -o test_utils
 
 # clean
 .PHONY: clean
 
 clean:
 	@rm -f test_logger
+	@rm -f test_utils
 	@echo "Build outputs cleaned."
 
