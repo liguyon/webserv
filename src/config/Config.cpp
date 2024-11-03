@@ -1,16 +1,37 @@
 #include "Config.h"
 
-#include <algorithm>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <stack>
 
 #include "../utils/Log.h"
-#include "../utils/Utils.h"
+#include "../utils/String.h"
 
-static bool isTomlExtension(const std::string& filename);
-static std::string trimLine(const std::string& line);
-static std::vector<std::string> getKnownDirectives();
+namespace Parser {
+enum Context {
+  None,
+  ServerBlock,
+  LocationBlock,
+};
+}
 
-const std::string Config::defaultConfigPath = "./webserv.toml";
-const std::vector<std::string> directives = getKnownDirectives();
+static std::vector<std::string> getValidServerDirectives();
+static std::vector<std::string> getValidLocationDirectives();
+static bool isServerBlock(const std::vector<std::string>& tokens, Parser::Context currentCtx);
+static bool isLocationBlock(const std::vector<std::string>& tokens, Parser::Context currentCtx);
+static bool isServerDirective(const std::vector<std::string>& tokens, Parser::Context currentCtx);
+static bool isLocationDirective(const std::vector<std::string>& tokens, Parser::Context currentCtx);
+
+const std::string Config::defaultConfigPath = "./conf/default.conf";
+const std::vector<std::string> Config::validServerDirectives = getValidServerDirectives();
+const std::vector<std::string> Config::validLocationDirectives = getValidLocationDirectives();
+
+void Config::LocationBlock::display() const {
+  std::cout << "[location]\n"
+      << "uri: " << uri
+      << "root: " << root << '\n';
+}
 
 Config::Config()
   : Config(defaultConfigPath) {
@@ -20,125 +41,143 @@ Config::~Config() {
 }
 
 Config::Config(const std::string& filePath) {
-  if (!parse(filePath))
+  if (filePath.empty()) {
+    logger.error("No configuration file provided.");
     throw std::exception();
-}
-
-bool Config::parse(const std::string& filePath) {
-  if (filePath.length() < 6) {
-    logger.error(
-      "Invalid configuration filename provided: "
-      + filePath
-      + ". Please ensure the filename is correct.");
-    return false;
   }
-  if (!isTomlExtension(filePath)) {
-    logger.error(
-      "The provided configuration file "
-      + filePath
-      + "does not have a valid TOML extension. Please ensure the file ends with '.toml'.");
-    return false;
-  }
-
   std::ifstream inf(filePath.c_str());
   if (!inf) {
     logger.error(
       "Unable to open configuration file at "
       + filePath
       + ". Please check if the file exists and if the application has the necessary permissions.");
-    return false;
+    throw std::exception();
   }
+  if (!parse(inf))
+    throw std::exception();
+}
 
+bool Config::parse(std::ifstream& inf) {
   std::string line;
+  int lineNumber = 0;
+  Parser::Context currentCtx = Parser::None;
+  std::stack<std::vector<std::string> > locCtx;
+  std::stack<std::vector<std::string> > servCtx;
+  std::stack<LocationBlock> locs;
+
   while (std::getline(inf, line)) {
-    line = trimLine(line);
-    if (line.empty())
+    ++lineNumber;
+    line = String::trim(line);
+
+    if (line.empty() || line[0] == '#')
       continue;
-    if (line == "[[servers]]") {
-      ServerConfig servConf;
-      if (!parseServer(inf, servConf)) {
-        logger.error(
-          "An error occurred while processing the configuration file "
-          + filePath
-          + ". Please check the file for syntax errors or invalid directives.");
-        return false;
+
+    if (line == "}") {
+      if (currentCtx == Parser::LocationBlock) {
+        LocationBlock loc;
+        while (!locCtx.empty()) {
+          if (!parseLocationDirective(locCtx.top(), loc))
+            return false;
+          locCtx.pop();
+        }
+        locs.push(loc);
+        currentCtx = Parser::ServerBlock;
+      } else if (currentCtx == Parser::ServerBlock) {
+        ServerBlock serv;
+        while (!servCtx.empty()) {
+          if (!parseServerDirective(servCtx.top(), serv))
+            return false;
+          servCtx.pop();
+        }
+        while (!locs.empty()) {
+          serv.locations.push_back(locs.top());
+          locs.pop();
+        }
+        conf_.push_back(serv);
+        currentCtx = Parser::None;
       }
-      conf_.push_back(servConf);
-    } else {
-      logger.error(
-        "An error occurred while processing the configuration file "
-        + filePath
-        + ". Please check the file for syntax errors or invalid directives.");
-      return false;
+      continue;
     }
-  }
-  return true;
-}
-
-bool Config::parseKvPair(const std::string& line, ServerConfig& serverConf) {
-  const std::vector<std::string> tokens = Utils::strSplit(line, '=');
-  if (tokens.size() != 2)
-    return false;
-  const std::string key = Utils::strTrim(tokens[0], ' ');
-  const std::string value = Utils::strTrim(tokens[1], ' ');
-  if (std::find(directives.begin(), directives.end(), key) == directives.end())
-    return false;
-
-  // TODO: implement parse fn for each directive
-  if (key == "listen") {
-    if (!parseListenDirective(value, serverConf))
-      return false;
-  } else if (key == "client_max_body_size") {
-    if (!parseClientMaxBodySizeDirective(value, serverConf))
-      return false;
-  } else if (key == "server_names") {
-    if (!parseServerNamesDirective(value, serverConf))
-      return false;
-  }
-  return true;
-}
-
-bool Config::parseServer(std::ifstream& inf, ServerConfig& parseResult) {
-  std::string line;
-  while (std::getline(inf, line)) {
-    line = trimLine(line);
-    // TODO: implement getConfigLineType
-    const ConfigLineType type = getConfigLineType();
-    switch (type) {
-      case typeKvPair:
-        if (!parseKvPair(line, parseResult))
-          return false;
-        break;
-      default:
-        return false;
+    std::vector<std::string> tokens = String::split(line, ' ');
+    if (isServerBlock(tokens, currentCtx)) {
+      currentCtx = Parser::ServerBlock;
+      continue;
     }
+    if (isLocationBlock(tokens, currentCtx)) {
+      currentCtx = Parser::LocationBlock;
+      continue;
+    }
+    if (isServerDirective(tokens, currentCtx)) {
+      servCtx.push(tokens);
+      continue;
+    }
+    if (isLocationDirective(tokens, currentCtx)) {
+      locCtx.push(tokens);
+      continue;
+    }
+    logger.error("Invalid configuration at line " + String::fromInt(lineNumber) + ".");
+    return false;
   }
   return true;
 }
 
-bool isTomlExtension(const std::string& filename) {
-  const size_t dotPosition = filename.find_last_of('.');
-  if (dotPosition == std::string::npos || dotPosition > filename.length() - 5)
+bool Config::parseServerDirective(const std::vector<std::string>& tokens, ServerBlock& out) {
+}
+
+bool Config::parseLocationDirective(const std::vector<std::string>& tokens, LocationBlock& out) {
+}
+
+bool isServerBlock(const std::vector<std::string>& tokens, Parser::Context currentCtx) {
+  return tokens.size() == 2 && tokens[0] == "server" && tokens[1] == "{" && currentCtx == Parser::None;
+}
+
+bool isLocationBlock(const std::vector<std::string>& tokens, Parser::Context currentCtx) {
+  return tokens.size() == 3 && tokens[0] == "location" && tokens[2] == "{" && currentCtx == Parser::ServerBlock;
+}
+
+bool isServerDirective(const std::vector<std::string>& tokens, Parser::Context currentCtx) {
+  if (!(currentCtx == Parser::ServerBlock
+      && tokens.size() > 2
+      && tokens.back()[tokens.back().length() - 1] == ';'))
+      return false;
+  for (
+    std::vector<std::string>::const_iterator it = Config::validServerDirectives.begin();
+    it != Config::validServerDirectives.end();
+    ++it) {
+    if (tokens[0] == *it)
+      return true;
+    }
+  return false;
+}
+
+bool isLocationDirective(const std::vector<std::string>& tokens, Parser::Context currentCtx) {
+  if (!(currentCtx == Parser::ServerBlock
+      && tokens.size() > 2
+      && tokens.back()[tokens.back().length() - 1] == ';'))
     return false;
-  const std::string extension = filename.substr(dotPosition);
-  return (extension == ".toml");
+  for (
+    std::vector<std::string>::const_iterator it = Config::validLocationDirectives.begin();
+    it != Config::validLocationDirectives.end();
+    ++it) {
+    if (tokens[0] == *it)
+      return true;
+  }
+  return false;
 }
 
-std::string trimLine(const std::string& line) {
-  std::string result;
-  const size_t commentPosition = line.find_first_of('#');
-  if (commentPosition != std::string::npos)
-    result = line.substr(0, commentPosition);
-  result = Utils::strTrim(result, ' ');
-  return result;
+std::vector<std::string> getValidServerDirectives() {
+  std::vector<std::string> directives;
+  directives.push_back("listen");
+  directives.push_back("server_names");
+  directives.push_back("error_page");
+  directives.push_back("client_max_body_size");
+  directives.push_back("root");
+  return directives;
 }
 
-std::vector<std::string> getKnownDirectives() {
-  std::vector<std::string> knownDirectives;
-  knownDirectives.push_back("listen");
-  knownDirectives.push_back("client_max_body_size");
-  knownDirectives.push_back("server_names");
-  knownDirectives.push_back("root");
-  knownDirectives.push_back("path");
-  return knownDirectives;
+std::vector<std::string> getValidLocationDirectives() {
+  std::vector<std::string> directives;
+  directives.push_back("root");
+  directives.push_back("autoindex");
+  return directives;
 }

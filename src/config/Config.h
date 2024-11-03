@@ -1,43 +1,45 @@
 #pragma once
 
-#include <fstream>
 #include <map>
 #include <string>
 #include <vector>
 
-
 class Config {
   public:
+    struct LocationBlock {
+      std::string uri;
+      std::string root;
+
+      void display() const;
+    };
+
+    struct ServerBlock {
+      unsigned short port;
+      std::string host;
+      std::vector<std::string> serverNames;
+      int clientMaxBodySize;
+      std::map<int, std::string> errorPages;
+      std::vector<LocationBlock> locations;
+      std::string root;
+      bool autoIndex;
+      void display() const;
+    };
+
     static const std::string defaultConfigPath;
-    static const std::vector<std::string> directives;
+    static const std::vector<std::string> validServerDirectives;
+    static const std::vector<std::string> validLocationDirectives;
 
     Config();
     ~Config();
     explicit Config(const std::string& filePath);
 
   private:
-    struct LocationDirective {
-      std::string path;
-      std::string root;
-    };
-    struct ServerConfig {
-      std::string listen;
-      std::vector<std::string> serverNames;
-      int clientMaxBodySize;
-      std::map<int, std::string> errorPages;
-      std::vector<LocationDirective> locations;
-    };
-    enum ConfigLineType {
-      typeKvPair,
-      typeTable,
-      typeError
-    };
+    std::vector<ServerBlock> conf_;
 
-    std::vector<ServerConfig> conf_;
+    bool parse(std::ifstream& inf);
+    bool parseServerDirective(const std::vector<std::string>& tokens, ServerBlock& out);
+    bool parseLocationDirective(const std::vector<std::string>& tokens, LocationBlock& out);
 
-    bool parse(const std::string& filePath);
-    static bool parseKvPair(const std::string& line, ServerConfig& serverConf);
-    static bool parseServer(std::ifstream& inf, ServerConfig& parseResult);
     Config(Config& other);
     Config& operator=(Config& other);
 };
