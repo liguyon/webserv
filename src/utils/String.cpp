@@ -1,20 +1,21 @@
-#include "Utils.h"
+#include "String.h"
+#include <sstream>
 
-std::string Utils::strTrim(const std::string& str, char c) {
+std::string String::trim(const std::string& str) {
   if (str.empty())
     return std::string();
 
   size_t start = 0;
   size_t end = str.length();
 
-  while (start < end && str[start] == c)
+  while (start < end && std::isspace(str[start]))
     ++start;
-  while (end > start && str[end - 1] == c)
+  while (end > start && std::isspace(str[end - 1]))
     --end;
   return str.substr(start, end - start);
 }
 
-std::vector<std::string> Utils::strSplit(const std::string& str, char delimiter) {
+std::vector<std::string> String::split(const std::string& str, char delimiter) {
   size_t start = 0;
   size_t end = str.find(delimiter);
   std::vector<std::string> tokens;
@@ -27,4 +28,10 @@ std::vector<std::string> Utils::strSplit(const std::string& str, char delimiter)
 
   tokens.push_back(str.substr(start));
   return tokens;
+}
+
+std::string String::fromInt(int i) {
+  std::ostringstream oss;
+  oss << i;
+  return oss.str();
 }
