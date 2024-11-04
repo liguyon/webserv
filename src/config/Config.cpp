@@ -94,6 +94,10 @@ Config::Config(const std::string& filePath) {
   }
 }
 
+const std::vector<Config::ServerBlock> Config::getServerConfig() const {
+  return conf_;
+}
+
 bool Config::parse(std::ifstream& inf) {
   std::string line;
   Parser::Context currentCtx = Parser::None;
