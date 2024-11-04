@@ -10,6 +10,7 @@ class Config {
       std::string uri;
       std::string root;
       bool autoIndex;
+      std::map<std::string, bool> isOptionSet;
 
       LocationBlock();
       void display() const;
@@ -23,6 +24,7 @@ class Config {
       std::map<int, std::string> errorPages;
       std::vector<LocationBlock> locations;
       std::string root;
+      std::map<std::string, bool> isDirectiveDefined;
 
       ServerBlock();
       void display() const;

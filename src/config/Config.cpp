@@ -38,6 +38,12 @@ void Config::LocationBlock::display() const {
 }
 
 Config::ServerBlock::ServerBlock(): port(0), clientMaxBodySize(0) {
+  for (
+    std::vector<std::string>::const_iterator it = validServerDirectives.begin();
+    it != validServerDirectives.end();
+    ++it) {
+    isDirectiveDefined[*it] = false;
+  }
 }
 
 void Config::ServerBlock::display() const {
@@ -108,6 +114,11 @@ bool Config::parse(std::ifstream& inf) {
             return false;
           servCtx.pop();
         }
+        if (
+          !serv.isDirectiveDefined["listen"]
+          || !serv.isDirectiveDefined["root"]
+          || !serv.isDirectiveDefined["server_name"])
+          return false;
         while (!locs.empty()) {
           serv.locations.push_back(locs.top());
           locs.pop();
@@ -148,7 +159,7 @@ bool Config::parse(std::ifstream& inf) {
 
 bool Config::parseServerDirective(const std::vector<std::string>& tokens, ServerBlock& out) {
   // parse listen
-  if (tokens[0] == "listen" && !out.port && out.host.empty()) {
+  if (tokens[0] == "listen" && !out.isDirectiveDefined[tokens[0]]) {
     if (tokens.size() != 2)
       return false;
     std::vector<std::string> addr = String::split(tokens[1], ':');
@@ -162,21 +173,21 @@ bool Config::parseServerDirective(const std::vector<std::string>& tokens, Server
     return true;
   }
   // parse root
-  if (tokens[0] == "root" && out.root.empty()) {
+  if (tokens[0] == "root" && !out.isDirectiveDefined[tokens[0]]) {
     if (tokens.size() != 2)
       return false;
     out.root = tokens[1];
     return true;
   }
   // parse server_name
-  if (tokens[0] == "server_name" && out.serverNames.empty()) {
+  if (tokens[0] == "server_name" && !out.isDirectiveDefined[tokens[0]]) {
     std::vector<std::string> sn = tokens;
     sn.erase(sn.begin());
     out.serverNames = sn;
     return true;
   }
   // parse client_max_body_size
-  if (tokens[0] == "client_max_body_size" && !out.clientMaxBodySize) {
+  if (tokens[0] == "client_max_body_size" && !out.isDirectiveDefined[tokens[0]]) {
     const size_t kilo = 1024;
     const size_t mega = kilo * 1024;
     const size_t giga = mega * 1024;
@@ -226,9 +237,15 @@ bool Config::parseServerDirective(const std::vector<std::string>& tokens, Server
 }
 
 bool Config::parseLocationDirective(const std::vector<std::string>& tokens, LocationBlock& out) {
-  (void) tokens;
-  (void) out;
-  return true;
+  // parse root
+  if (tokens[0] == "root" && out.root.empty()) {
+    if (tokens.size() != 2)
+      return false;
+    out.root = tokens[1];
+    return true;
+  }
+  if (tokens[0] == "autoindex")
+    return false;
 }
 
 bool isServerBlock(const std::vector<std::string>& tokens, Parser::Context currentCtx) {
