@@ -94,7 +94,7 @@ Config::Config(const std::string& filePath) {
   }
 }
 
-const std::vector<Config::ServerBlock> Config::getServerConfig() const {
+const std::vector<Config::ServerBlock>& Config::getServerConfig() const {
   return conf_;
 }
 

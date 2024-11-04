@@ -7,11 +7,9 @@
 
 class TcpServer {
   public:
-    explicit TcpServer(unsigned short port);
     explicit TcpServer(const Config& conf);
     ~TcpServer();
-    void run();
-
+    // void run();
 
   private:
     std::map<std::string, int> listeners_;

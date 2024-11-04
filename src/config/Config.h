@@ -36,7 +36,7 @@ class Config {
 
     ~Config();
     explicit Config(const std::string& filePath);
-    const std::vector<ServerBlock> getServerConfig() const;
+    const std::vector<ServerBlock>& getServerConfig() const;
 
   private:
     std::vector<ServerBlock> conf_;

@@ -38,16 +38,16 @@ TcpServer::~TcpServer() {
   }
 }
 
-void TcpServer::run() {
-  if (listen(listener_, 10) == -1) {
-    logger.error(
-      "Server initialization failed. Failed to listen on socket at "
-      + addrStr_ + ':' + portStr_ + ": " + std::string(strerror(errno)) + '.');
-    close(listener_);
-    freeaddrinfo(servInfo_);
-    throw std::exception();
-  }
-}
+// void TcpServer::run() {
+//   if (listen(listener_, 10) == -1) {
+//     logger.error(
+//       "Server initialization failed. Failed to listen on socket at "
+//       + addrStr_ + ':' + portStr_ + ": " + std::string(strerror(errno)) + '.');
+//     close(listener_);
+//     freeaddrinfo(servInfo_);
+//     throw std::exception();
+//   }
+// }
 
 int TcpServer::createSocket(const std::string& host, unsigned short port) {
   std::string portStr = String::fromInt(port);

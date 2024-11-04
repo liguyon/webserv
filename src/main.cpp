@@ -90,9 +90,9 @@ int main(int argc, char* argv[]) {
   try {
     const Config conf(filename);
     TcpServer serv(conf);
-    serv.run();
+    // serv.run();
   } catch (std::exception& e) {
-    (void)e;
+    (void) e;
     return 1;
   }
   return 0;
