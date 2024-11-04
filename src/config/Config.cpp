@@ -29,12 +29,19 @@ const std::vector<std::string> Config::validServerDirectives = getValidServerDir
 const std::vector<std::string> Config::validLocationDirectives = getValidLocationDirectives();
 
 Config::LocationBlock::LocationBlock(): autoIndex(false) {
+  for (
+    std::vector<std::string>::const_iterator it = validLocationDirectives.begin();
+    it != validLocationDirectives.end();
+    ++it) {
+    isDirectiveDefined[*it] = false;
+  }
 }
 
 void Config::LocationBlock::display() const {
   std::cout << "[location]\n"
-      << "uri: " << uri
-      << "root: " << root << '\n';
+      << "uri: " << uri << '\n'
+      << "root: " << root << '\n'
+      << "autoindex: " << (autoIndex ? "true" : "false") << '\n';
 }
 
 Config::ServerBlock::ServerBlock(): port(0), clientMaxBodySize(0) {
@@ -59,6 +66,9 @@ void Config::ServerBlock::display() const {
     std::cout << *it << ' ';
   }
   std::cout << '\n';
+  for (std::vector<LocationBlock>::const_iterator it = locations.begin(); it != locations.end(); ++it) {
+    it->display();
+  }
 }
 
 Config::~Config() {
@@ -105,6 +115,8 @@ bool Config::parse(std::ifstream& inf) {
             return false;
           locCtx.pop();
         }
+        if (!loc.isDirectiveDefined["root"])
+          return false;
         locs.push(loc);
         currentCtx = Parser::ServerBlock;
       } else if (currentCtx == Parser::ServerBlock) {
@@ -120,11 +132,13 @@ bool Config::parse(std::ifstream& inf) {
           || !serv.isDirectiveDefined["server_name"])
           return false;
         while (!locs.empty()) {
-          serv.locations.push_back(locs.top());
+          serv.locations.insert(serv.locations.begin(), locs.top());
           locs.pop();
         }
         conf_.push_back(serv);
+#ifdef WEBSERV_DEBUG
         serv.display();
+#endif
         currentCtx = Parser::None;
       }
       continue;
@@ -136,6 +150,7 @@ bool Config::parse(std::ifstream& inf) {
     }
     if (isLocationBlock(tokens, currentCtx)) {
       currentCtx = Parser::LocationBlock;
+      locCtx.push(tokens);
       continue;
     }
     if (isServerDirective(tokens, currentCtx)) {
@@ -170,6 +185,7 @@ bool Config::parseServerDirective(const std::vector<std::string>& tokens, Server
       return false;
     out.host = addr[0];
     out.port = static_cast<unsigned short>(port);
+    out.isDirectiveDefined[tokens[0]] = true;
     return true;
   }
   // parse root
@@ -177,6 +193,7 @@ bool Config::parseServerDirective(const std::vector<std::string>& tokens, Server
     if (tokens.size() != 2)
       return false;
     out.root = tokens[1];
+    out.isDirectiveDefined[tokens[0]] = true;
     return true;
   }
   // parse server_name
@@ -184,6 +201,7 @@ bool Config::parseServerDirective(const std::vector<std::string>& tokens, Server
     std::vector<std::string> sn = tokens;
     sn.erase(sn.begin());
     out.serverNames = sn;
+    out.isDirectiveDefined[tokens[0]] = true;
     return true;
   }
   // parse client_max_body_size
@@ -218,6 +236,7 @@ bool Config::parseServerDirective(const std::vector<std::string>& tokens, Server
     if (n > giga)
       return false;
     out.clientMaxBodySize = n;
+    out.isDirectiveDefined[tokens[0]] = true;
     return true;
   }
   // parse error_page
@@ -237,15 +256,30 @@ bool Config::parseServerDirective(const std::vector<std::string>& tokens, Server
 }
 
 bool Config::parseLocationDirective(const std::vector<std::string>& tokens, LocationBlock& out) {
+  // parse uri
+  if (tokens[0] == "location") {
+    out.uri = tokens[1];
+    return true;
+  }
   // parse root
-  if (tokens[0] == "root" && out.root.empty()) {
+  if (tokens[0] == "root" && !out.isDirectiveDefined[tokens[0]]) {
     if (tokens.size() != 2)
       return false;
     out.root = tokens[1];
+    out.isDirectiveDefined[tokens[0]] = true;
     return true;
   }
-  if (tokens[0] == "autoindex")
-    return false;
+  if (tokens[0] == "autoindex" && !out.isDirectiveDefined[tokens[0]]) {
+    if (tokens[1] == "on")
+      out.autoIndex = true;
+    else if (tokens[1] == "off")
+      out.autoIndex = false;
+    else
+      return false;
+    out.isDirectiveDefined[tokens[0]] = true;
+    return true;
+  }
+  return false;
 }
 
 bool isServerBlock(const std::vector<std::string>& tokens, Parser::Context currentCtx) {
@@ -272,7 +306,7 @@ bool isServerDirective(const std::vector<std::string>& tokens, Parser::Context c
 }
 
 bool isLocationDirective(const std::vector<std::string>& tokens, Parser::Context currentCtx) {
-  if (!(currentCtx == Parser::ServerBlock
+  if (!(currentCtx == Parser::LocationBlock
     && tokens.size() >= 2
     && tokens.back()[tokens.back().length() - 1] == ';'))
     return false;

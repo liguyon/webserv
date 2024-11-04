@@ -10,7 +10,7 @@ class Config {
       std::string uri;
       std::string root;
       bool autoIndex;
-      std::map<std::string, bool> isOptionSet;
+      std::map<std::string, bool> isDirectiveDefined;
 
       LocationBlock();
       void display() const;
@@ -42,7 +42,7 @@ class Config {
 
     bool parse(std::ifstream& inf);
     static bool parseServerDirective(const std::vector<std::string>& tokens, ServerBlock& out);
-    bool parseLocationDirective(const std::vector<std::string>& tokens, LocationBlock& out);
+    static bool parseLocationDirective(const std::vector<std::string>& tokens, LocationBlock& out);
 
     Config();
     Config(Config& other);
