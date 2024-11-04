@@ -3,74 +3,89 @@
 #include <cerrno>
 #include <cstring>
 #include <fcntl.h>
+#include <netdb.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 
 #include <exception>
-#include <sstream>
 
 #include "../utils/Log.h"
+#include "../utils/String.h"
 
-std::string usToString(unsigned short s) {
-  std::ostringstream ss;
-  ss << s;
-  return ss.str();
+TcpServer::TcpServer(const Config& conf) {
+  for (
+    std::vector<Config::ServerBlock>::const_iterator it = conf.getServerConfig().begin();
+    it != conf.getServerConfig().end();
+    ++it
+  ) {
+    int sock = createSocket(it->host, it->port);
+    if (sock == -1)
+      throw std::exception();
+    std::string addr = it->host + ":" + String::fromInt(it->port);
+    listeners_[addr] = sock;
+  }
 }
 
-TcpServer::TcpServer(unsigned short port)
-  : port_(port), portStr_(usToString(port)) {
-  // populate addrinfo
+TcpServer::~TcpServer() {
+  for (
+    std::map<std::string, int>::const_iterator it = listeners_.begin();
+    it != listeners_.end();
+    ++it) {
+    close(it->second);
+    logger.info("Server shut down at " + it->first + '.');
+  }
+}
+
+void TcpServer::run() {
+  if (listen(listener_, 10) == -1) {
+    logger.error(
+      "Server initialization failed. Failed to listen on socket at "
+      + addrStr_ + ':' + portStr_ + ": " + std::string(strerror(errno)) + '.');
+    close(listener_);
+    freeaddrinfo(servInfo_);
+    throw std::exception();
+  }
+}
+
+int TcpServer::createSocket(const std::string& host, unsigned short port) {
+  std::string portStr = String::fromInt(port);
+  addrinfo* servInfo;
   int status;
+
+  // addrinfo
   addrinfo hints = {};
   hints.ai_family = AF_INET;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;
-  if ((status = getaddrinfo(NULL, portStr_.c_str(), &hints, &servInfo_)) != 0) {
+  if ((status = getaddrinfo(host.c_str(), portStr.c_str(), &hints, &servInfo)) != 0) {
     logger.error(
-      "TcpServer initialization failed. Failed to resolve host address using getaddrinfo: "
+      "Server initialization failed. Failed to resolve "
+      + host + ":" + portStr + ": "
       + std::string(gai_strerror(status)) + '.');
-    throw std::exception();
+    return -1;
   }
-
-  // get address as string
-  const sockaddr_in* ipv4 = reinterpret_cast<sockaddr_in*>(servInfo_->ai_addr);
-  const void* addr = &(ipv4->sin_addr);
-  char ipStr[INET_ADDRSTRLEN];
-  inet_ntop(servInfo_->ai_family, addr, ipStr, sizeof ipStr);
-  addrStr_ = ipStr;
 
   // socket
   // TODO: loop through servInfo to try to create a socket
-  if ((listener_ = socket(servInfo_->ai_family, servInfo_->ai_socktype, servInfo_->ai_protocol)) == -1) {
-    logger.error("TcpServer initialization failed. Failed to create socket: " + std::string(strerror(errno)) + '.');
-    freeaddrinfo(servInfo_);
-    throw std::exception();
-  }
-  fcntl(listener_, F_SETFL, O_NONBLOCK);
-  if (bind(listener_, servInfo_->ai_addr, servInfo_->ai_addrlen) == -1) {
+  int listener;
+  if ((listener = socket(servInfo->ai_family, servInfo->ai_socktype, servInfo->ai_protocol)) == -1) {
     logger.error(
-      "TcpServer initialization failed. Failed to bind socket to "
-      + addrStr_ + ':' + portStr_ + ": " + std::string(strerror(errno)) + '.');
-    close(listener_);
-    freeaddrinfo(servInfo_);
-    throw std::exception();
+      "Server initialization failed. Failed to create socket for "
+      + host + ":" + portStr + ": "
+      + std::string(strerror(errno)) + '.'); // errno allowed, this is not a read/write
+    freeaddrinfo(servInfo);
+    return -1;
   }
-  if (listen(listener_, 10) == -1) {
+  fcntl(listener, F_SETFL, O_NONBLOCK);
+  if (bind(listener, servInfo->ai_addr, servInfo->ai_addrlen) == -1) {
     logger.error(
-      "TcpServer initialization failed. Failed to listen on socket at "
-      + addrStr_ + ':' + portStr_ + ": " + std::string(strerror(errno)) + '.');
-    close(listener_);
-    freeaddrinfo(servInfo_);
-    throw std::exception();
+      "Server initialization failed. Failed to bind socket to "
+      + host + ':' + portStr + ": " + std::string(strerror(errno)) + '.'); // errno allowed, this is not a read/write
+    close(listener);
+    freeaddrinfo(servInfo);
+    return -1;
   }
-
-  logger.info("TcpServer listening at " + addrStr_ + ':' + portStr_ + '.');
-}
-
-TcpServer::~TcpServer() {
-  close(listener_);
-  freeaddrinfo(servInfo_);
-  logger.info("TcpServer shut down at " + addrStr_ + ':' + portStr_ + '.');
+  return listener;
 }

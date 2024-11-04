@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "config/Config.h"
 #include "server/TcpServer.h"
 #include "utils/Log.h"
 
@@ -83,14 +84,16 @@ int main(int argc, char* argv[]) {
       usage("Error: invalid option: " + *it);
     }
   }
-  if (filename.empty())
-    usage("Error: no configuration file provided.");
 
-  TcpServer* server = NULL;
+  if (filename.empty())
+    filename = Config::defaultConfigPath;
   try {
-    server = new TcpServer(8080);
+    const Config conf(filename);
+    TcpServer serv(conf);
+    serv.run();
   } catch (std::exception& e) {
+    (void)e;
+    return 1;
   }
-  delete server;
   return 0;
 }

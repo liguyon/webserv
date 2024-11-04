@@ -1,22 +1,23 @@
 #pragma once
 
-#include <netdb.h>
+#include <map>
 #include <string>
+
+#include "../config/Config.h"
 
 class TcpServer {
   public:
     explicit TcpServer(unsigned short port);
+    explicit TcpServer(const Config& conf);
     ~TcpServer();
+    void run();
 
 
   private:
-    unsigned short port_;
-    std::string portStr_;
-    std::string addrStr_;
-    addrinfo* servInfo_;
-    int listener_;
+    std::map<std::string, int> listeners_;
 
-    TcpServer();
-    TcpServer(const TcpServer& other);
-    TcpServer& operator=(const TcpServer& other);
+    int createSocket(const std::string& host, unsigned short port);
+    TcpServer(); // = delete
+    TcpServer(const TcpServer& other); // = delete
+    TcpServer& operator=(const TcpServer& other); // = delete
 };
