@@ -13,8 +13,8 @@ add_executable(webserv
 		src/server/TcpServer.h
 		src/config/Config.cpp
 		src/config/Config.h
-		src/utils/Utils.cpp
-		src/utils/Utils.h)
+		src/utils/String.cpp
+		src/utils/String.h)
 
 target_compile_options(webserv PRIVATE
 		-Wall -Wextra -Wpedantic -Wnon-virtual-dtor -Wconversion -Wsign-conversion -Werror)

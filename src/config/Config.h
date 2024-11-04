@@ -9,7 +9,9 @@ class Config {
     struct LocationBlock {
       std::string uri;
       std::string root;
+      bool autoIndex;
 
+      LocationBlock();
       void display() const;
     };
 
@@ -17,11 +19,12 @@ class Config {
       unsigned short port;
       std::string host;
       std::vector<std::string> serverNames;
-      int clientMaxBodySize;
+      size_t clientMaxBodySize;
       std::map<int, std::string> errorPages;
       std::vector<LocationBlock> locations;
       std::string root;
-      bool autoIndex;
+
+      ServerBlock();
       void display() const;
     };
 
@@ -29,7 +32,6 @@ class Config {
     static const std::vector<std::string> validServerDirectives;
     static const std::vector<std::string> validLocationDirectives;
 
-    Config();
     ~Config();
     explicit Config(const std::string& filePath);
 
@@ -37,9 +39,10 @@ class Config {
     std::vector<ServerBlock> conf_;
 
     bool parse(std::ifstream& inf);
-    bool parseServerDirective(const std::vector<std::string>& tokens, ServerBlock& out);
+    static bool parseServerDirective(const std::vector<std::string>& tokens, ServerBlock& out);
     bool parseLocationDirective(const std::vector<std::string>& tokens, LocationBlock& out);
 
+    Config();
     Config(Config& other);
     Config& operator=(Config& other);
 };

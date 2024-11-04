@@ -13,7 +13,7 @@ BUILD_DIR		:= build
 DEBUG_DIR		:= $(BUILD_DIR)/debug
 RELEASE_DIR		:= $(BUILD_DIR)/release
 
-SOURCES			:= $(SRC_DIR)/main.cpp $(SRC_DIR)/utils/Log.cpp $(SRC_DIR)/utils/Utils.cpp \
+SOURCES			:= $(SRC_DIR)/main.cpp $(SRC_DIR)/utils/Log.cpp $(SRC_DIR)/utils/String.cpp \
 				   $(SRC_DIR)/server/TcpServer.cpp $(SRC_DIR)/config/Config.cpp
 DEBUG_OBJS		:= $(patsubst $(SRC_DIR)/%.cpp, $(DEBUG_DIR)/%.o, $(SOURCES))
 RELEASE_OBJS	:= $(patsubst $(SRC_DIR)/%.cpp, $(RELEASE_DIR)/%.o, $(SOURCES))
