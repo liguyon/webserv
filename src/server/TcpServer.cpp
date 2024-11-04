@@ -87,5 +87,6 @@ int TcpServer::createSocket(const std::string& host, unsigned short port) {
     freeaddrinfo(servInfo);
     return -1;
   }
+  freeaddrinfo(servInfo);
   return listener;
 }
