@@ -87,13 +87,15 @@ int main(int argc, char* argv[]) {
 
   if (filename.empty())
     filename = Config::defaultConfigPath;
+
+  int status = 0;
   try {
     const Config conf(filename);
     TcpServer serv(conf);
-    // serv.run();
+    status = serv.run();
   } catch (std::exception& e) {
     (void) e;
     return 1;
   }
-  return 0;
+  return status;
 }

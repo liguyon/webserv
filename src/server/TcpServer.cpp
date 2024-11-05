@@ -1,20 +1,27 @@
 #include "TcpServer.h"
 
 #include <cerrno>
+#include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
 #include <netdb.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <sys/epoll.h>
 #include <sys/socket.h>
-#include <sys/types.h>
 
 #include <exception>
 
 #include "../utils/Log.h"
 #include "../utils/String.h"
 
-TcpServer::TcpServer(const Config& conf) {
+static int epollCtlAdd(int epfd, int fd, unsigned int event);
+
+TcpServer::TcpServer(const Config& conf) : terminate_(false) {
+  if ((epfd_ = epoll_create1(EPOLL_CLOEXEC) == -1)) {
+    logger.error("Server initialization failed. Failed to create epoll instance.");
+    throw std::exception();
+  }
   for (
     std::vector<Config::ServerBlock>::const_iterator it = conf.getServerConfig().begin();
     it != conf.getServerConfig().end();
@@ -36,18 +43,42 @@ TcpServer::~TcpServer() {
     close(it->second);
     logger.info("Server shut down at " + it->first + '.');
   }
+  close(epfd_);
 }
 
-// void TcpServer::run() {
-//   if (listen(listener_, 10) == -1) {
-//     logger.error(
-//       "Server initialization failed. Failed to listen on socket at "
-//       + addrStr_ + ':' + portStr_ + ": " + std::string(strerror(errno)) + '.');
-//     close(listener_);
-//     freeaddrinfo(servInfo_);
-//     throw std::exception();
-//   }
-// }
+int epollCtlAdd(int epfd, int fd, unsigned int events) {
+  epoll_event ev = {};
+  ev.events = events;
+  ev.data.fd = fd;
+  return epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev) == -1;
+}
+
+int TcpServer::run() {
+  for (
+    std::map<std::string, int>::const_iterator it = listeners_.begin();
+    it != listeners_.end();
+    ++it) {
+    if (listen(it->second, maxQueuedConnections) == -1) {
+      logger.error(
+        "Server initialization failed. Failed to listen on socket at "
+        + it->first + ": " + std::string(strerror(errno)) + '.'); // errno: no read write
+      return EXIT_FAILURE;
+    }
+    if (epollCtlAdd(epfd_, it->second, EPOLLIN | EPOLLOUT | EPOLLET) == -1) {
+      logger.error("Server initialization aborted: epoll_ctl failed.");
+      return EXIT_FAILURE;
+    }
+    logger.info("Server listening at " + it->first + ".");
+  }
+  // int status = 0;
+  // while (!terminate_) {
+  //   status = processEvents();
+  //   if (status != EXIT_SUCCESS)
+  //     return status;
+  // }
+  // return status;
+  return 0;
+}
 
 int TcpServer::createSocket(const std::string& host, unsigned short port) {
   std::string portStr = String::fromInt(port);
@@ -89,4 +120,19 @@ int TcpServer::createSocket(const std::string& host, unsigned short port) {
   }
   freeaddrinfo(servInfo);
   return listener;
+}
+
+// int TcpServer::processEvents() {
+//   // TODO: implement process event
+// }
+
+bool TcpServer::isListener(int sockfd) const {
+  for (
+    std::map<std::string, int>::const_iterator it = listeners_.begin();
+    it != listeners_.end();
+    ++it) {
+    if (it->second == sockfd)
+      return true;
+  }
+  return false;
 }
