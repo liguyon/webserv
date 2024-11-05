@@ -1,6 +1,7 @@
 #include "TcpServer.h"
 
 #include <cerrno>
+#include <csignal>
 #include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
@@ -11,11 +12,14 @@
 #include <sys/socket.h>
 
 #include <exception>
+#include <utility>
 
 #include "../utils/Log.h"
 #include "../utils/String.h"
 
 static int epollCtlAdd(int epfd, int fd, unsigned int event);
+
+TcpServer* TcpServer::instance = NULL;
 
 TcpServer::TcpServer(const Config& conf) : terminate_(false) {
   if ((epfd_ = epoll_create1(EPOLL_CLOEXEC) == -1)) {
@@ -44,6 +48,7 @@ TcpServer::~TcpServer() {
     logger.info("Server shut down at " + it->first + '.');
   }
   close(epfd_);
+  logger.info("Server shut down gracefully.");
 }
 
 int epollCtlAdd(int epfd, int fd, unsigned int events) {
@@ -70,14 +75,20 @@ int TcpServer::run() {
     }
     logger.info("Server listening at " + it->first + ".");
   }
-  // int status = 0;
-  // while (!terminate_) {
-  //   status = processEvents();
-  //   if (status != EXIT_SUCCESS)
-  //     return status;
-  // }
-  // return status;
-  return 0;
+  std::signal(SIGINT, &handleSignal);
+  logger.info("Server started successfully. Press Ctrl+C to shut down.");
+  int status = 0;
+  while (!terminate_) {
+    //   status = processEvents();
+    //   if (status != EXIT_SUCCESS)
+    //     return status;
+    sleep(1);
+  }
+  return status;
+}
+
+void TcpServer::shutdown() {
+  terminate_ = true;
 }
 
 int TcpServer::createSocket(const std::string& host, unsigned short port) {
@@ -120,6 +131,12 @@ int TcpServer::createSocket(const std::string& host, unsigned short port) {
   }
   freeaddrinfo(servInfo);
   return listener;
+}
+
+void TcpServer::handleSignal(int signal) {
+  if (signal == SIGINT)
+    if (instance)
+      instance->shutdown();
 }
 
 // int TcpServer::processEvents() {

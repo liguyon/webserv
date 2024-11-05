@@ -92,6 +92,7 @@ int main(int argc, char* argv[]) {
   try {
     const Config conf(filename);
     TcpServer serv(conf);
+    TcpServer::instance = &serv;
     status = serv.run();
   } catch (std::exception& e) {
     (void) e;
